@@ -144,11 +144,8 @@ async function loadProposals() {
       const id = `prop-${cn}`;
       const descA = s.descriptions?.desc_a || '';
       const descB = s.descriptions?.desc_b || '';
-      const pathA = `../eval_results/detr_proposals_debug/${cn}_A_proposals.png`;
-      const pathB = `../eval_results/detr_proposals_debug/${cn}_B_proposals.png`;
-      // Also check for thumbnails
-      const thumbA = `assets/proposals/${cn}_A_proposals.png`;
-      const thumbB = `assets/proposals/${cn}_B_proposals.png`;
+      const thumbA = `assets/proposals/${cn}_A_proposals.jpg`;
+      const thumbB = `assets/proposals/${cn}_B_proposals.jpg`;
 
       return `<div class="proposal-sample" id="${id}">
         <div class="proposal-header" onclick="toggleProposal('${id}')">
@@ -160,13 +157,11 @@ async function loadProposals() {
         <div class="proposal-expand" style="display:none;">
           <div class="tex-section">
             <div class="tex-label">Texture A Proposals</div>
-            <img data-src="${thumbA}" alt="${cn} Texture A proposals"
-                 onerror="this.dataset.src='${pathA}'; this.src='${pathA}';">
+            <img data-src="${thumbA}" alt="${cn} Texture A proposals">
           </div>
           <div class="tex-section">
             <div class="tex-label">Texture B Proposals</div>
-            <img data-src="${thumbB}" alt="${cn} Texture B proposals"
-                 onerror="this.dataset.src='${pathB}'; this.src='${pathB}';">
+            <img data-src="${thumbB}" alt="${cn} Texture B proposals">
           </div>
         </div>
       </div>`;
