@@ -251,7 +251,6 @@ function toggleExpand(id, cropName) {
         img.src = `assets/thumbnails/${cropName}_${img.dataset.suffix}.jpg`;
       }
     });
-    }
     expandDiv.style.display = 'block';
     icon.innerHTML = '&#9650;';
     item.style.borderColor = 'var(--accent)';
@@ -262,16 +261,9 @@ function toggleExpand(id, cropName) {
   }
 }
 
-// Lightbox (kept for direct image viewing)
-function openLightbox(src) {
-  const lb = document.getElementById('lightbox');
-  const img = document.getElementById('lightbox-img');
-  img.src = src;
-  lb.classList.add('active');
-}
-
 function closeLightbox() {
-  document.getElementById('lightbox').classList.remove('active');
+  const lb = document.getElementById('lightbox');
+  if (lb) lb.classList.remove('active');
 }
 
 // Events
