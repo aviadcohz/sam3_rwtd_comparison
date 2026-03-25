@@ -1,0 +1,30 @@
+__pycache__/
+*.pyc
+*.pyo
+.eggs/
+*.egg-info/
+dist/
+build/
+.env
+*.pt
+*.pth
+*.bin
+wandb/
+.vscode/
+.idea/
+
+# Large visualization images (kept locally, not in git)
+eval_results/*/visualizations/
+eval_results/*/sam3_proposals/
+eval_results/*/heatmaps/
+eval_results/*/debug_vis/
+eval_results/*/outputs/
+
+# Debug eval results (large, not needed for web)
+eval_results/clipseg_standalone_debug/
+eval_results/detr_proposals_debug/
+eval_results/detr_proposals_debug_qwen_prompt/
+eval_results/pair_optimizer/
+eval_results/qwen3_points_debug/
+eval_results/sam3_proposal_diversity/
+eval_results/clipseg_diversity/

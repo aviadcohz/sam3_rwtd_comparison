@@ -1,0 +1,85 @@
+{
+  "generic_texture": {
+    "tag": "generic_texture",
+    "num_samples": 253,
+    "mean_iou": 0.7063279490974621,
+    "mean_iou_a": 0.7649539625747847,
+    "mean_iou_b": 0.6477019356201397,
+    "mean_dice": 0.7558298156288064,
+    "mean_ari": 0.6879288472466252
+  },
+  "oracle_text": {
+    "tag": "oracle_text",
+    "num_samples": 253,
+    "mean_iou": 0.742288164753979,
+    "mean_iou_a": 0.782035252459327,
+    "mean_iou_b": 0.702541077048631,
+    "mean_dice": 0.7897229457041223,
+    "mean_ari": 0.7413465428064315
+  },
+  "points_only": {
+    "tag": "points_only",
+    "num_samples": 253,
+    "mean_iou": 0.6864005750288571,
+    "mean_iou_a": 0.7139439673761337,
+    "mean_iou_b": 0.6588571826815804,
+    "mean_dice": 0.7568678043783741,
+    "mean_ari": 0.641563872346977
+  },
+  "oracle_text_points": {
+    "tag": "oracle_text_points",
+    "num_samples": 253,
+    "mean_iou": 0.8111673565953439,
+    "mean_iou_a": 0.8163539042168801,
+    "mean_iou_b": 0.8059808089738077,
+    "mean_dice": 0.8646342630544906,
+    "mean_ari": 0.7567771206460355
+  },
+  "qwen3_text_proposal": {
+    "tag": "qwen3_text_proposal",
+    "num_samples": 253,
+    "mean_iou": 0.8343145707438624,
+    "mean_iou_a": 0.8457151703310628,
+    "mean_iou_b": 0.8229139711566619,
+    "mean_dice": 0.8801236982347749,
+    "mean_ari": 0.785235110818758
+  },
+  "qwen3_text_semseg": {
+    "tag": "qwen3_text_semseg",
+    "num_samples": 253,
+    "mean_iou": 0.9288884368340634,
+    "mean_iou_a": 0.9340247161590985,
+    "mean_iou_b": 0.9237521575090282,
+    "mean_dice": 0.9572273311784281,
+    "mean_ari": 0.8787114648060769
+  },
+  "qwen3_text_points": {
+    "tag": "qwen3_text_points",
+    "num_samples": 253,
+    "mean_iou": 0.8343145707438624,
+    "mean_iou_a": 0.8457151703310628,
+    "mean_iou_b": 0.8229139711566619,
+    "mean_dice": 0.8801236982347749,
+    "mean_ari": 0.785235110818758
+  },
+  "qwen3_clipseg": {
+    "tag": "qwen3_clipseg",
+    "num_samples": 253,
+    "mean_iou": 0.8428694232445424,
+    "mean_iou_a": 0.8594087175449742,
+    "mean_iou_b": 0.8263301289441107,
+    "mean_dice": 0.892466794166689,
+    "mean_ari": 0.7759950890571343
+  },
+  "qwen3_clipseg_sem": {
+    "tag": "qwen3_clipseg_sem",
+    "num_samples": 253,
+    "mean_iou": 0.8905546262832047,
+    "mean_iou_a": 0.9032276733587355,
+    "mean_iou_b": 0.8778815792076741,
+    "mean_dice": 0.9285036272099273,
+    "mean_ari": 0.8322434308767239
+  },
+  "qwen3_parse_failures": 0,
+  "qwen3_parse_success_rate": 100.0
+}

@@ -1,0 +1,120 @@
+# =============================================================================
+# Qwen2SAM v3_tracker: Stage 2 — Multi-Token DETR + SAM3 Tracker
+# Training on Detecture dataset (981 samples), eval on RWTD (227 test)
+#
+# Uses v3_detecture/best.pt as Stage 1 checkpoint
+# =============================================================================
+
+model:
+  qwen_model: "Qwen/Qwen2.5-VL-3B-Instruct"
+  qwen_dtype: "bfloat16"
+  gradient_checkpointing: true
+  lora_r: 16
+  lora_alpha: 32
+  lora_dropout: 0.15
+  lora_target_modules: ["q_proj", "v_proj"]
+
+  # Description projector (from v3)
+  desc_projector_hidden: 1024
+  max_desc_tokens: 16
+
+  sam3_checkpoint: null
+  freeze_decoder_layers: true
+  sam3_lr_scale: 1.0
+  image_size: 1008
+
+  # Alignment
+  align_embedder: "sentence"
+  align_embed_dim: 768
+  align_model_name: "all-mpnet-base-v2"
+
+hires:
+  enabled: false
+
+tracker:
+  v3_checkpoint: "checkpoints/v3_detexture/best.pt"
+  num_points_per_texture: 4
+  coord_head_dim: 256
+  freeze_detr: true
+  detr_lr_scale: 0.1
+  tracker_lr_scale: 1.0
+  align_embedder: "sentence"
+  align_embed_dim: 768
+  align_model_name: "all-mpnet-base-v2"
+
+data:
+  data_root: "/home/aviad/datasets/ade20k/DeTexture/final"
+  metadata_file: "metadata.json"
+  train_size: 550
+  val_size: 137
+  num_workers: 0
+  pin_memory: true
+  augmentation: true
+
+  # Eval override
+  eval_data_root: "/home/aviad/RWTD"
+  eval_metadata_file: "metadata_phase1.json"
+  eval_train_size: 0
+
+  system_prompt: "You are a texture boundary segmentation assistant. Describe each texture using its material, pattern structure, and size or shape features. Focus on what makes each texture visually different from the other. Bracket each texture description with START_SEG and END_SEG markers, then provide representative point coordinates for each texture region."
+  user_prompt: "Identify the two textures in this image. For each, describe its material, pattern, and distinctive visual features in 5-10 words, then segment them."
+
+training:
+  batch_size: 8
+  gradient_accumulation_steps: 1
+  num_epochs: 80
+  learning_rate: 2.0e-5
+  weight_decay: 0.05
+  warmup_epochs: 3
+  min_lr: 1.0e-6
+  max_grad_norm: 1.0
+  seg_grad_to_lm: false
+  early_stopping_patience: 10
+
+loss:
+  detr_weight: 0.0
+  focal_weight: 5.0
+  dice_weight: 1.0
+  cls_weight: 2.0
+  box_l1_weight: 5.0
+  box_giou_weight: 2.0
+  exclusivity_weight: 0.5
+
+  tracker_weight: 1.0
+  tracker_focal_weight: 5.0
+  tracker_dice_weight: 1.0
+  tracker_exclusivity_weight: 0.5
+
+  reconstruction_weight: 0.0
+  alignment_weight: 1.0
+  alignment_temperature: 0.07
+  lm_weight: 0.0
+
+amp:
+  enabled: true
+  dtype: "bfloat16"
+
+checkpoint:
+  dir: "checkpoints/v3_tracker_detexture"
+  save_every_n_epochs: 10
+  keep_last_n: 3
+
+logging:
+  log_every_n_steps: 5
+  vis_every_n_steps: 200
+  use_wandb: true
+  wandb_project: "qwen2sam-v3"
+  wandb_run_name: "v3-tracker-detexture-687"
+  wandb_group: "v3_tracker"
+  wandb_tags: ["v3", "detecture", "stage2", "tracker"]
+
+visualization:
+  n_train_samples: 4
+  n_val_samples: 4
+  cell_size: 280
+  every_n_epochs: 10
+
+validation:
+  every_n_epochs: 1
+
+seed: 42

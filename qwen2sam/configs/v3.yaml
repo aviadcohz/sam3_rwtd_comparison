@@ -1,0 +1,102 @@
+# =============================================================================
+# Qwen2SAM v3: Multi-Token Description Architecture
+#
+# Key differences from v2_improved:
+#   - Uses <START_SEG_A>...<END_SEG_A> bracket tokens (4 new tokens)
+#   - Variable-length description extraction (up to 16 tokens)
+#   - Per-token projection to SAM3 (not single-token compression)
+#   - Higher LM weight (0.5) — descriptions are the primary training target
+# =============================================================================
+
+model:
+  qwen_model: "Qwen/Qwen2.5-VL-3B-Instruct"
+  qwen_dtype: "bfloat16"
+  gradient_checkpointing: true
+
+  lora_r: 16
+  lora_alpha: 32
+  lora_dropout: 0.0
+  lora_target_modules: ["q_proj", "v_proj"]
+
+  # Description projector (per-token MLP)
+  desc_projector_hidden: 1024
+  max_desc_tokens: 16
+
+  # SAM3 config
+  sam3_checkpoint: null
+  freeze_decoder_layers: true
+  sam3_lr_scale: 1.0
+
+  image_size: 1008
+
+  # Alignment (sentence embedder)
+  align_embedder: "sentence"
+  align_embed_dim: 768
+  align_model_name: "all-mpnet-base-v2"
+
+hires:
+  enabled: false
+  thin_dim: 32
+
+data:
+  data_root: "/home/aviad/RWTD"
+  metadata_file: "metadata_phase1.json"
+  train_size: 26
+  val_size: 0
+  num_workers: 2
+  pin_memory: true
+  augmentation: true
+
+  system_prompt: "You are a texture boundary segmentation assistant. Describe each texture using its material, pattern structure, and size or shape features. Focus on what makes each texture visually different from the other. Bracket each texture description with START_SEG and END_SEG markers."
+  user_prompt: "Identify the two textures in this image. For each, describe its material, pattern, and distinctive visual features in 5-10 words, then segment them."
+
+training:
+  batch_size: 1
+  gradient_accumulation_steps: 8
+  num_epochs: 100
+  learning_rate: 1.0e-4
+  weight_decay: 0.01
+  warmup_epochs: 3
+  min_lr: 1.0e-6
+  max_grad_norm: 1.0
+
+  seg_grad_to_lm: true
+  seg_grad_warmup_epochs: 10
+
+loss:
+  # Segmentation losses (DETR-style)
+  seg_weight: 1.0
+  focal_weight: 5.0
+  dice_weight: 1.0
+  cls_weight: 2.0
+  box_l1_weight: 5.0
+  box_giou_weight: 2.0
+  exclusivity_weight: 0.5
+
+  # Alignment loss with memory bank
+  alignment_weight: 1.0
+  alignment_temperature: 0.07
+  alignment_bank_size: 32
+
+  # LM loss (higher than v2 — descriptions are training targets)
+  lm_weight: 0.5
+
+amp:
+  enabled: true
+  dtype: "bfloat16"
+
+checkpoint:
+  dir: "checkpoints/v3"
+  save_every_n_epochs: 5
+  keep_last_n: 3
+
+logging:
+  log_every_n_steps: 5
+  use_wandb: false
+  wandb_project: "qwen2sam-v3"
+  wandb_run_name: "v3-multi-token"
+
+validation:
+  every_n_epochs: 1
+
+seed: 42

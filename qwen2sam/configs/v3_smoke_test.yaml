@@ -1,0 +1,77 @@
+# Smoke test: 10 samples, 20 epochs
+model:
+  qwen_model: "Qwen/Qwen2.5-VL-3B-Instruct"
+  qwen_dtype: "bfloat16"
+  gradient_checkpointing: true
+  lora_r: 16
+  lora_alpha: 32
+  lora_dropout: 0.0
+  lora_target_modules: ["q_proj", "v_proj"]
+  desc_projector_hidden: 1024
+  max_desc_tokens: 16
+  sam3_checkpoint: null
+  freeze_decoder_layers: true
+  sam3_lr_scale: 1.0
+  image_size: 1008
+  align_embedder: "sentence"
+  align_embed_dim: 768
+  align_model_name: "all-mpnet-base-v2"
+
+hires:
+  enabled: false
+  thin_dim: 32
+
+data:
+  data_root: "/home/aviad/datasets/ade20k/Detecture_dataset"
+  metadata_file: "metadata.json"
+  train_size: 10
+  val_size: 5
+  num_workers: 0
+  pin_memory: true
+  augmentation: false
+
+  system_prompt: "You are a texture boundary segmentation assistant. Describe each texture using its material, pattern structure, and size or shape features. Focus on what makes each texture visually different from the other. Bracket each texture description with START_SEG and END_SEG markers."
+  user_prompt: "Identify the two textures in this image. For each, describe its material, pattern, and distinctive visual features in 5-10 words, then segment them."
+
+training:
+  batch_size: 2
+  gradient_accumulation_steps: 2
+  num_epochs: 1
+  learning_rate: 1.0e-4
+  weight_decay: 0.01
+  warmup_epochs: 0
+  min_lr: 1.0e-6
+  max_grad_norm: 1.0
+  seg_grad_to_lm: true
+  seg_grad_warmup_epochs: 5
+
+loss:
+  seg_weight: 1.0
+  focal_weight: 5.0
+  dice_weight: 1.0
+  cls_weight: 2.0
+  box_l1_weight: 5.0
+  box_giou_weight: 2.0
+  exclusivity_weight: 0.5
+  alignment_weight: 1.0
+  alignment_temperature: 0.07
+  alignment_bank_size: 16
+  lm_weight: 0.5
+
+amp:
+  enabled: true
+  dtype: "bfloat16"
+
+checkpoint:
+  dir: "checkpoints/v3_smoke_test"
+  save_every_n_epochs: 10
+  keep_last_n: 2
+
+logging:
+  log_every_n_steps: 1
+  use_wandb: false
+
+validation:
+  every_n_epochs: 5
+
+seed: 42
