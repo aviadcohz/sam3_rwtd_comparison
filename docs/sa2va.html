@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sa2VA vs Qw3 SemSeg — SAM 3 RWTD</title>
+  <script>
+    (() => {
+      const k = 'sam3-rwtd-theme';
+      let t = null;
+      try { const s = localStorage.getItem(k); if (s === 'dark' || s === 'light') t = s; } catch(_) {}
+      if (!t && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) t = 'dark';
+      document.documentElement.dataset.theme = t || 'light';
+      document.documentElement.style.colorScheme = t || 'light';
+    })();
+  </script>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .nav-tabs {
+      display: flex; gap: 8px; margin-bottom: 40px; justify-content: center; flex-wrap: wrap;
+    }
+    .nav-tabs a {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 10px 24px; border-radius: 50px; font-weight: 600;
+      font-size: 0.9rem; text-decoration: none; transition: all 0.2s;
+      font-family: var(--font-accent);
+    }
+    .nav-tabs a.active {
+      background: var(--brand-gradient); color: #fff;
+      box-shadow: 0 8px 16px rgba(0,95,115,0.15);
+    }
+    .nav-tabs a:not(.active) {
+      background: var(--surface-strong); color: var(--muted);
+      border: 1px solid var(--line);
+    }
+    .nav-tabs a:not(.active):hover {
+      background: var(--surface-muted); color: var(--ink);
+    }
+    .verdict-box {
+      background: var(--surface-strong);
+      border-radius: 16px;
+      padding: 24px 32px;
+      margin: 24px 0 32px;
+      border-left: 4px solid var(--good);
+    }
+    .verdict-box h3 { margin: 0 0 8px; color: var(--good); }
+    .verdict-box p { margin: 0; color: var(--muted); line-height: 1.6; }
+  </style>
+</head>
+<body>
+<div class="container animate-fade-in-down">
+  <div class="page-tools">
+    <button class="theme-toggle" type="button" onclick="toggleTheme()">Dark mode</button>
+  </div>
+
+  <header style="text-align:center; margin-bottom:20px;">
+    <div class="subtitle">SAM 3 on RWTD</div>
+    <h1 class="title-gradient">Qw3 SemSeg vs Sa2VA</h1>
+    <p style="color:var(--muted); margin-top:12px; font-weight:300; max-width:860px; margin-inline:auto;">
+      Per-sample comparison of <strong>Qwen3+SAM3 SemSeg</strong> (two-model pipeline) vs
+      <strong>Sa2VA-Qwen3-VL-4B</strong> (single end-to-end model) on the RWTD dataset.
+      Both approaches are fully autonomous &mdash; no human descriptions provided.
+    </p>
+    <p style="margin-top:12px;">
+      <a href="https://github.com/bytedance/Sa2VA" target="_blank"
+         style="color:var(--brand); text-decoration:none; font-weight:600;">
+        Sa2VA GitHub &rarr;
+      </a>
+    </p>
+  </header>
+
+  <nav class="nav-tabs">
+    <a href="index.html">Evaluation Results</a>
+    <a href="proposals.html">DETR Proposals</a>
+    <a href="comparison.html">AutoSAM Comparison</a>
+    <a href="sa2va.html" class="active">Sa2VA Comparison</a>
+  </nav>
+
+  <!-- About Sa2VA -->
+  <section class="executive-summary">
+    <h2>About Sa2VA</h2>
+    <p><strong>Sa2VA</strong> (Segment Anything 2 with Visual Assistant) merges SAM2 with a VLM
+      (Qwen3-VL) into a single end-to-end model. Given an image and a prompt, it generates text
+      with <code>[SEG]</code> tokens that trigger SAM2 to produce segmentation masks &mdash; all
+      in one forward pass.</p>
+    <p class="mini-note" style="max-width:82ch;">
+      Unlike the Qwen3+SAM3 pipeline (where Qwen describes and SAM3 segments separately), Sa2VA
+      autonomously decides what to segment. It consistently produces a single mask per prompt;
+      the second texture is the complement (1 &minus; mask).
+    </p>
+  </section>
+
+  <!-- Verdict -->
+  <div class="verdict-box">
+    <h3>Result: Qwen3+SAM3 wins by +20.2 mIoU points</h3>
+    <p>The two-model pipeline (Qwen3 VL describes + SAM3 segments) at <strong>92.9% mIoU</strong>
+       significantly outperforms Sa2VA's single-model approach at <strong>72.7% mIoU</strong>.
+       The specialized pipeline leverages SAM3's Semantic Seg Head for dense pixel-level prediction,
+       while Sa2VA is designed for object-level referring segmentation and struggles with texture regions.</p>
+  </div>
+
+  <!-- Summary metrics -->
+  <section class="section">
+    <h2>Method Comparison</h2>
+    <div class="metric-grid" id="sa2va-metric-cards"></div>
+  </section>
+
+  <!-- Gallery -->
+  <section class="section">
+    <h2>Sample Gallery</h2>
+    <p style="color:var(--muted); margin-bottom:18px;">
+      Click any sample to see the 3-column comparison: GT | Qw3 SemSeg | Sa2VA.
+    </p>
+    <div class="gallery-controls">
+      <input type="text" id="sa2va-search" placeholder="Search by name or description...">
+      <select id="sa2va-sort">
+        <option value="name">Sort by Name</option>
+        <option value="sa2va-desc">Sa2VA IoU: High &rarr; Low</option>
+        <option value="sa2va-asc">Sa2VA IoU: Low &rarr; High</option>
+        <option value="diff-desc">Qw3Sem &minus; Sa2VA: Largest gap</option>
+        <option value="diff-asc">Sa2VA &minus; Qw3Sem: Sa2VA wins</option>
+      </select>
+    </div>
+    <div class="gallery-grid" id="sa2va-gallery"></div>
+  </section>
+
+  <footer>
+    <p>SAM 3 Texture Boundary Evaluation &middot;
+      <a href="https://arxiv.org/abs/2511.16719" target="_blank">SAM 3</a> &middot;
+      <a href="https://github.com/bytedance/Sa2VA" target="_blank">Sa2VA</a> &middot;
+      <a href="https://qwenlm.github.io/blog/qwen3/" target="_blank">Qwen3-VL</a>
+    </p>
+  </footer>
+</div>
+
+<script>
+let data = null;
+let sortMode = 'name';
+let filterText = '';
+
+async function loadData() {
+  try {
+    const resp = await fetch('data/results.json');
+    data = await resp.json();
+    renderMetricCards();
+    renderGallery();
+  } catch (e) {
+    console.error('Failed to load results:', e);
+  }
+}
+
+function renderMetricCards() {
+  const grid = document.getElementById('sa2va-metric-cards');
+  if (!grid || !data?.summary) return;
+
+  const approaches = [
+    { key: 'generic_texture', label: 'Generic ZS', note: 'Baseline (text="texture")', cls: '' },
+    { key: 'qwen3_text_semseg', label: 'Qw3 SemSeg', note: 'Best (Qwen3+SAM3 pipeline)', cls: 'delta-positive' },
+    { key: 'sa2va', label: 'Sa2VA', note: 'Single-pass (Qwen3-VL-4B + SAM2)', cls: '' },
+    { key: 'autosam', label: 'AutoSAM', note: 'Image-only (trained)', cls: '' },
+  ];
+
+  grid.innerHTML = approaches.map(a => {
+    const s = data.summary[a.key];
+    if (!s) return `<article class="metric"><div class="k">${a.label}</div><div class="v">--</div><div class="mini-note">${a.note}</div></article>`;
+    return `<article class="metric">
+      <div class="k">${a.label}</div>
+      <div class="v ${a.cls}">${(s.mean_iou * 100).toFixed(1)}%</div>
+      <div class="mini-note">${a.note} &middot; ARI: ${(s.mean_ari * 100).toFixed(1)}%</div>
+    </article>`;
+  }).join('');
+}
+
+function renderGallery() {
+  const grid = document.getElementById('sa2va-gallery');
+  if (!grid || !data?.samples) return;
+
+  let samples = [...data.samples];
+
+  if (filterText) {
+    const f = filterText.toLowerCase();
+    samples = samples.filter(s =>
+      s.crop_name.toLowerCase().includes(f) ||
+      (s.descriptions?.desc_a || '').toLowerCase().includes(f) ||
+      (s.descriptions?.desc_b || '').toLowerCase().includes(f)
+    );
+  }
+
+  const getIou = (s, key) => s.metrics?.[key]?.mean_iou || 0;
+
+  if (sortMode === 'sa2va-desc') {
+    samples.sort((a, b) => getIou(b, 'sa2va') - getIou(a, 'sa2va'));
+  } else if (sortMode === 'sa2va-asc') {
+    samples.sort((a, b) => getIou(a, 'sa2va') - getIou(b, 'sa2va'));
+  } else if (sortMode === 'diff-desc') {
+    samples.sort((a, b) =>
+      (getIou(b, 'qwen3_text_semseg') - getIou(b, 'sa2va')) -
+      (getIou(a, 'qwen3_text_semseg') - getIou(a, 'sa2va'))
+    );
+  } else if (sortMode === 'diff-asc') {
+    samples.sort((a, b) =>
+      (getIou(b, 'sa2va') - getIou(b, 'qwen3_text_semseg')) -
+      (getIou(a, 'sa2va') - getIou(a, 'qwen3_text_semseg'))
+    );
+  } else {
+    samples.sort((a, b) => a.crop_name.localeCompare(b.crop_name, undefined, { numeric: true }));
+  }
+
+  grid.innerHTML = samples.map(s => {
+    const semIou = getIou(s, 'qwen3_text_semseg');
+    const sa2vaIou = getIou(s, 'sa2va');
+    const diff = sa2vaIou - semIou;
+    const id = `sa2va-${s.crop_name}`;
+
+    const badge = (label, val) => {
+      const cls = val >= 0.85 ? 'iou-high' : val >= 0.7 ? 'iou-mid' : 'iou-low';
+      return `<span class="iou-badge ${cls}" style="margin:2px">${label}: ${(val*100).toFixed(1)}%</span>`;
+    };
+
+    const diffBadge = diff >= 0
+      ? `<span class="iou-badge iou-high" style="margin:2px">&Delta;: +${(diff*100).toFixed(1)}</span>`
+      : `<span class="iou-badge iou-low" style="margin:2px">&Delta;: ${(diff*100).toFixed(1)}</span>`;
+
+    return `<div class="gallery-item" id="${id}">
+      <div class="gallery-header" onclick="toggleSa2va('${id}', '${s.crop_name}')">
+        <div style="padding:20px">
+          <span class="crop-name">${s.crop_name}</span>
+          <span class="expand-icon" style="float:right;color:var(--muted);font-size:1.2rem">&#9660;</span>
+          ${s.descriptions?.desc_a ? `<div style="font-size:0.85rem;color:var(--bad);margin-top:8px">A: ${s.descriptions.desc_a}</div>` : ''}
+          ${s.descriptions?.desc_b ? `<div style="font-size:0.85rem;color:var(--brand)">B: ${s.descriptions.desc_b}</div>` : ''}
+          <div style="margin-top:8px">
+            ${badge('Qw3Sem', semIou)}
+            ${badge('Sa2VA', sa2vaIou)}
+            ${diffBadge}
+          </div>
+        </div>
+      </div>
+      <div class="gallery-expand" style="display:none">
+        <div style="padding:8px 16px 4px; color:var(--muted); font-size:0.8rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
+          Ground Truth | Qw3 SemSeg | Sa2VA
+        </div>
+        <img data-crop="${s.crop_name}" alt="${s.crop_name} comparison" loading="lazy"
+             style="width:100%; display:block;">
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleSa2va(id, cropName) {
+  const item = document.getElementById(id);
+  const expandDiv = item.querySelector('.gallery-expand');
+  const icon = item.querySelector('.expand-icon');
+
+  if (expandDiv.style.display === 'none') {
+    const img = expandDiv.querySelector('img[data-crop]');
+    if (img && (!img.src || img.src === window.location.href)) {
+      img.src = `assets/thumbnails/${cropName}_07_sa2va_comparison.jpg`;
+    }
+    expandDiv.style.display = 'block';
+    icon.innerHTML = '&#9650;';
+    item.style.borderColor = 'var(--accent)';
+  } else {
+    expandDiv.style.display = 'none';
+    icon.innerHTML = '&#9660;';
+    item.style.borderColor = '';
+  }
+}
+
+// Events
+document.addEventListener('DOMContentLoaded', () => {
+  loadData();
+
+  const search = document.getElementById('sa2va-search');
+  if (search) {
+    search.addEventListener('input', e => {
+      filterText = e.target.value;
+      renderGallery();
+    });
+  }
+
+  const sort = document.getElementById('sa2va-sort');
+  if (sort) {
+    sort.addEventListener('change', e => {
+      sortMode = e.target.value;
+      renderGallery();
+    });
+  }
+});
+
+// Theme toggle
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.dataset.theme || 'light';
+  const next = current === 'dark' ? 'light' : 'dark';
+  html.dataset.theme = next;
+  html.style.colorScheme = next;
+  try { localStorage.setItem('sam3-rwtd-theme', next); } catch(_) {}
+}
+</script>
+</body>
+</html>

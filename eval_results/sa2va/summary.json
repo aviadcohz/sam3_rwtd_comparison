@@ -1,0 +1,17 @@
+{
+  "sa2va_v6": {
+    "tag": "sa2va_v6",
+    "num_samples": 253,
+    "mean_iou": 0.7271392002154968,
+    "mean_iou_a": 0.7510816282960664,
+    "mean_iou_b": 0.7031967721349274,
+    "mean_dice": 0.7934996412861668,
+    "mean_ari": 0.5605547228164073,
+    "mask_count_stats": {
+      "0_masks": 0,
+      "1_mask": 253,
+      "2_masks": 0,
+      "3+_masks": 0
+    }
+  }
+}

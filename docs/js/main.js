@@ -8,9 +8,37 @@ async function loadResults() {
     renderCharts();
     renderResultsTable();
     renderGallery();
+    fillAutoSAMRow();
   } catch (e) {
     console.error('Failed to load results:', e);
   }
+}
+
+function fillDynamicRow(prefix, summaryKey) {
+  const s = resultsData?.summary?.[summaryKey];
+  if (!s) return;
+  const baseline = resultsData?.summary?.generic_texture;
+  const iouEl = document.getElementById(`${prefix}-iou`);
+  const ariEl = document.getElementById(`${prefix}-ari`);
+  const dIouEl = document.getElementById(`${prefix}-delta-iou`);
+  const dAriEl = document.getElementById(`${prefix}-delta-ari`);
+  if (iouEl) iouEl.innerHTML = `<strong>${(s.mean_iou).toFixed(3)}</strong>`;
+  if (ariEl) ariEl.textContent = (s.mean_ari).toFixed(3);
+  if (baseline && dIouEl) {
+    const d = s.mean_iou - baseline.mean_iou;
+    const cls = d >= 0 ? 'good' : 'bad';
+    dIouEl.innerHTML = `<span class="delta-pill ${cls}">${d >= 0 ? '+' : ''}${d.toFixed(3)}</span>`;
+  }
+  if (baseline && dAriEl) {
+    const d = s.mean_ari - baseline.mean_ari;
+    const cls = d >= 0 ? 'good' : 'bad';
+    dAriEl.innerHTML = `<span class="delta-pill ${cls}">${d >= 0 ? '+' : ''}${d.toFixed(3)}</span>`;
+  }
+}
+
+function fillAutoSAMRow() {
+  fillDynamicRow('autosam', 'autosam');
+  fillDynamicRow('sa2va', 'sa2va');
 }
 
 // Approach display metadata
@@ -25,6 +53,8 @@ const APPROACHES = {
   qwen3_text_points:    { label: 'Qw3 Text+Pts',      short: 'Qw3T+P',     color: '#bc8cff' },
   qwen3_clipseg:        { label: 'Qw3+CLIPSeg',       short: 'Qw3+CSeg',   color: '#f85149' },
   qwen3_clipseg_sem:    { label: 'Qw3+CSeg(sem)',     short: 'CSeg(sem)',   color: '#da3633' },
+  sa2va:                { label: 'Sa2VA',              short: 'Sa2VA',      color: '#e17055' },
+  autosam:              { label: 'AutoSAM',           short: 'AutoSAM',    color: '#6c5ce7' },
 };
 
 function renderCharts() {
@@ -202,8 +232,8 @@ function renderGallery() {
 
     // Build per-approach metrics summary
     const metricKeys = ['generic', 'oracle_text', 'oracle_text_points',
-                        'qwen3_text_proposal', 'qwen3_text_semseg'];
-    const metricLabels = ['Generic', 'OracleTxt', 'Orc T+P', 'Qw3Prop', 'Qw3Sem'];
+                        'qwen3_text_proposal', 'qwen3_text_semseg', 'sa2va', 'autosam'];
+    const metricLabels = ['Generic', 'OracleTxt', 'Orc T+P', 'Qw3Prop', 'Qw3Sem', 'Sa2VA', 'AutoSAM'];
     let metricsHtml = metricKeys.map((k, i) => {
       const m = s.metrics?.[k] || s.metrics?.[k.replace('_proposal','_only')];
       if (!m) return '';

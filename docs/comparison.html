@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoSAM Comparison — SAM 3 RWTD</title>
+  <script>
+    (() => {
+      const k = 'sam3-rwtd-theme';
+      let t = null;
+      try { const s = localStorage.getItem(k); if (s === 'dark' || s === 'light') t = s; } catch(_) {}
+      if (!t && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) t = 'dark';
+      document.documentElement.dataset.theme = t || 'light';
+      document.documentElement.style.colorScheme = t || 'light';
+    })();
+  </script>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .nav-tabs {
+      display: flex; gap: 8px; margin-bottom: 40px; justify-content: center;
+    }
+    .nav-tabs a {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 10px 24px; border-radius: 50px; font-weight: 600;
+      font-size: 0.9rem; text-decoration: none; transition: all 0.2s;
+      font-family: var(--font-accent);
+    }
+    .nav-tabs a.active {
+      background: var(--brand-gradient); color: #fff;
+      box-shadow: 0 8px 16px rgba(0,95,115,0.15);
+    }
+    .nav-tabs a:not(.active) {
+      background: var(--surface-strong); color: var(--muted);
+      border: 1px solid var(--line);
+    }
+    .nav-tabs a:not(.active):hover {
+      background: var(--surface-muted); color: var(--ink);
+    }
+  </style>
+</head>
+<body>
+<div class="container animate-fade-in-down">
+  <div class="page-tools">
+    <button class="theme-toggle" type="button" onclick="toggleTheme()">Dark mode</button>
+  </div>
+
+  <header style="text-align:center; margin-bottom:20px;">
+    <div class="subtitle">SAM 3 on RWTD</div>
+    <h1 class="title-gradient">AutoSAM Comparison</h1>
+    <p style="color:var(--muted); margin-top:12px; font-weight:300; max-width:860px; margin-inline:auto;">
+      Per-sample comparison of three approaches on the RWTD dataset:
+      <strong>Generic Zero-Shot</strong> (baseline),
+      <strong>Qw3 SemSeg</strong> (best zero-shot), and
+      <strong>AutoSAM</strong> (image-only, trained on 26 samples).
+      Ground truth shown for reference.
+    </p>
+    <p style="margin-top:12px;">
+      <a href="https://arxiv.org/abs/2306.06370" target="_blank"
+         style="color:var(--brand); text-decoration:none; font-weight:600;">
+        AutoSAM Paper &rarr;
+      </a>
+    </p>
+  </header>
+
+  <nav class="nav-tabs">
+    <a href="index.html">Evaluation Results</a>
+    <a href="proposals.html">DETR Proposals</a>
+    <a href="comparison.html" class="active">AutoSAM Comparison</a>
+    <a href="sa2va.html">Sa2VA Comparison</a>
+  </nav>
+
+  <!-- About AutoSAM -->
+  <section class="executive-summary">
+    <h2>About AutoSAM</h2>
+    <p><strong>AutoSAM</strong> replaces SAM's manual prompt encoder with a learned image encoder
+      (HarDNet backbone). It uses <strong>only the image</strong> &mdash; no text descriptions or
+      point prompts. SAM's weights are frozen; only the small ModelEmb (~2M params) is trained.</p>
+    <p class="mini-note" style="max-width:82ch;">
+      Unlike all other approaches which are zero-shot, AutoSAM is trained on 26 RWTD training samples.
+      It outputs a single binary mask; the second texture is the complement (1 &minus; mask).
+      Hungarian matching selects the best label assignment during evaluation.
+    </p>
+  </section>
+
+  <!-- Summary metrics -->
+  <section class="section">
+    <h2>Method Comparison</h2>
+    <div class="metric-grid" id="metric-cards"></div>
+  </section>
+
+  <!-- Gallery -->
+  <section class="section">
+    <h2>Sample Gallery</h2>
+    <p style="color:var(--muted); margin-bottom:18px;">
+      Click any sample to see the 4-column comparison: GT | Generic ZS | Qw3 SemSeg | AutoSAM.
+    </p>
+    <div class="gallery-controls">
+      <input type="text" id="comp-search" placeholder="Search by name or description...">
+      <select id="comp-sort">
+        <option value="name">Sort by Name</option>
+        <option value="iou-desc">AutoSAM IoU: High &rarr; Low</option>
+        <option value="iou-asc">AutoSAM IoU: Low &rarr; High</option>
+        <option value="diff-desc">AutoSAM &minus; Generic: Best gains</option>
+      </select>
+    </div>
+    <div class="gallery-grid" id="comp-gallery"></div>
+  </section>
+
+  <footer>
+    <p>SAM 3 Texture Boundary Evaluation &middot;
+      <a href="https://arxiv.org/abs/2511.16719" target="_blank">SAM 3</a> &middot;
+      <a href="https://arxiv.org/abs/2306.06370" target="_blank">AutoSAM</a> &middot;
+      <a href="https://qwenlm.github.io/blog/qwen3/" target="_blank">Qwen3-VL-8B</a>
+    </p>
+  </footer>
+</div>
+
+<script>
+let data = null;
+let compSort = 'name';
+let compFilter = '';
+
+async function loadData() {
+  try {
+    const resp = await fetch('data/results.json');
+    data = await resp.json();
+    renderMetricCards();
+    renderCompGallery();
+  } catch (e) {
+    console.error('Failed to load results:', e);
+  }
+}
+
+function renderMetricCards() {
+  const grid = document.getElementById('metric-cards');
+  if (!grid || !data?.summary) return;
+
+  const approaches = [
+    { key: 'generic_texture', label: 'Generic ZS', note: 'Baseline (text="texture")', cls: '' },
+    { key: 'qwen3_text_semseg', label: 'Qw3 SemSeg', note: 'Best zero-shot (WTA)', cls: 'delta-positive' },
+    { key: 'autosam', label: 'AutoSAM', note: 'Image-only (trained)', cls: '' },
+  ];
+
+  grid.innerHTML = approaches.map(a => {
+    const s = data.summary[a.key];
+    if (!s) return `<article class="metric"><div class="k">${a.label}</div><div class="v">--</div><div class="mini-note">${a.note}</div></article>`;
+    return `<article class="metric">
+      <div class="k">${a.label}</div>
+      <div class="v ${a.cls}">${(s.mean_iou * 100).toFixed(1)}%</div>
+      <div class="mini-note">${a.note} &middot; ARI: ${(s.mean_ari * 100).toFixed(1)}%</div>
+    </article>`;
+  }).join('');
+}
+
+function renderCompGallery() {
+  const grid = document.getElementById('comp-gallery');
+  if (!grid || !data?.samples) return;
+
+  let samples = [...data.samples];
+
+  if (compFilter) {
+    const f = compFilter.toLowerCase();
+    samples = samples.filter(s =>
+      s.crop_name.toLowerCase().includes(f) ||
+      (s.descriptions?.desc_a || '').toLowerCase().includes(f) ||
+      (s.descriptions?.desc_b || '').toLowerCase().includes(f)
+    );
+  }
+
+  const getIou = (s, key) => s.metrics?.[key]?.mean_iou || 0;
+
+  if (compSort === 'iou-desc') {
+    samples.sort((a, b) => getIou(b, 'autosam') - getIou(a, 'autosam'));
+  } else if (compSort === 'iou-asc') {
+    samples.sort((a, b) => getIou(a, 'autosam') - getIou(b, 'autosam'));
+  } else if (compSort === 'diff-desc') {
+    samples.sort((a, b) =>
+      (getIou(b, 'autosam') - getIou(b, 'generic')) -
+      (getIou(a, 'autosam') - getIou(a, 'generic'))
+    );
+  } else {
+    samples.sort((a, b) => a.crop_name.localeCompare(b.crop_name, undefined, { numeric: true }));
+  }
+
+  grid.innerHTML = samples.map(s => {
+    const genIou = getIou(s, 'generic');
+    const semIou = getIou(s, 'qwen3_text_semseg');
+    const sa2vaIou = getIou(s, 'sa2va');
+    const asIou = getIou(s, 'autosam');
+    const id = `comp-${s.crop_name}`;
+
+    const badge = (label, val) => {
+      const cls = val >= 0.85 ? 'iou-high' : val >= 0.7 ? 'iou-mid' : 'iou-low';
+      return `<span class="iou-badge ${cls}" style="margin:2px">${label}: ${(val*100).toFixed(1)}%</span>`;
+    };
+
+    return `<div class="gallery-item" id="${id}">
+      <div class="gallery-header" onclick="toggleComp('${id}', '${s.crop_name}')">
+        <div style="padding:20px">
+          <span class="crop-name">${s.crop_name}</span>
+          <span class="expand-icon" style="float:right;color:var(--muted);font-size:1.2rem">&#9660;</span>
+          ${s.descriptions?.desc_a ? `<div style="font-size:0.85rem;color:var(--bad);margin-top:8px">A: ${s.descriptions.desc_a}</div>` : ''}
+          ${s.descriptions?.desc_b ? `<div style="font-size:0.85rem;color:var(--brand)">B: ${s.descriptions.desc_b}</div>` : ''}
+          <div style="margin-top:8px">
+            ${badge('Generic', genIou)}
+            ${badge('Qw3Sem', semIou)}
+            ${badge('Sa2VA', sa2vaIou)}
+            ${badge('AutoSAM', asIou)}
+          </div>
+        </div>
+      </div>
+      <div class="gallery-expand" style="display:none">
+        <div style="padding:8px 16px 4px; color:var(--muted); font-size:0.8rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
+          GT | Generic ZS | Qw3 SemSeg | AutoSAM
+        </div>
+        <img data-crop="${s.crop_name}" alt="${s.crop_name} comparison" loading="lazy"
+             style="width:100%; display:block; border-bottom:1px solid var(--line);">
+        <div style="padding:8px 16px 4px; color:var(--muted); font-size:0.8rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
+          AutoSAM Detail (GT vs AutoSAM)
+        </div>
+        <img data-crop-detail="${s.crop_name}" alt="${s.crop_name} AutoSAM detail" loading="lazy"
+             style="width:100%; display:block;">
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleComp(id, cropName) {
+  const item = document.getElementById(id);
+  const expandDiv = item.querySelector('.gallery-expand');
+  const icon = item.querySelector('.expand-icon');
+
+  if (expandDiv.style.display === 'none') {
+    // Load images on first expand
+    const compImg = expandDiv.querySelector('img[data-crop]');
+    if (compImg && (!compImg.src || compImg.src === window.location.href)) {
+      compImg.src = `assets/thumbnails/${cropName}_05_comparison.png`;
+    }
+    const detImg = expandDiv.querySelector('img[data-crop-detail]');
+    if (detImg && (!detImg.src || detImg.src === window.location.href)) {
+      detImg.src = `assets/thumbnails/${cropName}_05_autosam.png`;
+    }
+    expandDiv.style.display = 'block';
+    icon.innerHTML = '&#9650;';
+    item.style.borderColor = 'var(--accent)';
+  } else {
+    expandDiv.style.display = 'none';
+    icon.innerHTML = '&#9660;';
+    item.style.borderColor = '';
+  }
+}
+
+// Events
+document.addEventListener('DOMContentLoaded', () => {
+  loadData();
+
+  const search = document.getElementById('comp-search');
+  if (search) {
+    search.addEventListener('input', e => {
+      compFilter = e.target.value;
+      renderCompGallery();
+    });
+  }
+
+  const sort = document.getElementById('comp-sort');
+  if (sort) {
+    sort.addEventListener('change', e => {
+      compSort = e.target.value;
+      renderCompGallery();
+    });
+  }
+});
+
+// Theme toggle
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.dataset.theme || 'light';
+  const next = current === 'dark' ? 'light' : 'dark';
+  html.dataset.theme = next;
+  html.style.colorScheme = next;
+  try { localStorage.setItem('sam3-rwtd-theme', next); } catch(_) {}
+}
+</script>
+</body>
+</html>
