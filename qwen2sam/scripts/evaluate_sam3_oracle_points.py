@@ -193,7 +193,7 @@ QWEN_USER_PROMPT = (
     "IMPORTANT: Describe the ENTIRE region as a collective group, NOT individual objects within it. "
     "Think of each region as a surface/area, not as a single object.\n\n"
     "Format your response exactly like this:\n"
-    "TEXTURE_A: Texture of<description>\n"
+    "TEXTURE_A: Texture of <description>\n"
     "TEXTURE_B: Texture of <description>"
 )
 
